@@ -6,7 +6,9 @@ import type { Result } from './state.ts';
 export const TOOL_NAMES = ['team_create', 'team_sync', 'ensure_worker', 'task_graph_apply', 'task_read', 'task_update', 'worker_stop', 'team_shutdown', 'alert_send'] as const;
 export type ToolName = typeof TOOL_NAMES[number];
 export type Role = 'lead' | 'worker';
-export interface Contract { lead: Record<ToolName, TSchema>; worker: Partial<Record<ToolName, TSchema>>; results: Record<ToolName, TSchema> }
+/** The label and description Pi Team Bright registers for one role's tool. */
+export interface ToolPresentation { label: string; description: string }
+export interface Contract { lead: Record<ToolName, TSchema>; worker: Partial<Record<ToolName, TSchema>>; results: Record<ToolName, TSchema>; presentation: Record<Role, Partial<Record<ToolName, ToolPresentation>>> }
 // Generated from the pinned executable rc.7 contract, not the stale agent surface.
 const source=readFileSync(new URL('./rc7-contract.json', import.meta.url), 'utf8');
 const patchedContracts=new Map<number,string>();

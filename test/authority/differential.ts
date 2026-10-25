@@ -104,7 +104,7 @@ async function runSeed(seed: number, steps: number, targeted = false) {
   const candidate = against === 'oracle' ? createOracle : (await import(candidateModule)).createTeamRuntime as typeof RuntimeFactory;
   const deliveryModule: typeof oracleDelivery = against === 'oracle' ? oracleDelivery : await import(new URL('./delivery.ts', candidateModule).href);
   const pageModule: typeof oraclePages = against === 'oracle' ? oraclePages : await import(new URL('./notifier.ts', candidateModule).href);
-  const oracle = await fixture(createOracle), current = await fixture(candidate);
+  const oracle = await fixture(createOracle as never), current = await fixture(candidate as never);
   const identities = new NativeIdBijection();
   identities.bindActors(oracle.actorIds(), current.actorIds());
   const rng = random(seed), pick = <T>(xs: readonly T[]) => xs[rng(xs.length)];

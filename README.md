@@ -151,6 +151,12 @@ contract pin: it ships the same source files, and a test compares their SHA-256
 values with the recorded ones. The tests regenerate the contract from the
 installed devDependency `@hypercarrier/pi-team-bright@0.25.1`.
 
+Each role's tool labels and descriptions come from Pi Team Bright's own
+registration. `scripts/pi-registration.mjs` captures it per role through an
+inert host. The parity test compares every durable tool with the installed
+`@hypercarrier/pi-team-bright`. Known gap: Pi's Worker `alert_send` requires
+non-empty `text` and `task_id`; the durable schema does not yet.
+
 ```sh
 npm ci
 npm test

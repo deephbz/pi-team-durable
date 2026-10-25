@@ -238,8 +238,12 @@ export function createAuthorityTools(options: CoreOptions) {
   }
  }
  function tools(role:Role) {
-  return TOOL_NAMES.filter(name=>contract[role][name]).map(name=>defineTool({
-   name,description:`${name}: PTB rc.7 authority operation.`,parameters:contract[role][name]!,replay:'safe',
+  return TOOL_NAMES.filter(name=>contract[role][name]).map(name=>{
+   const presentation=contract.presentation[role][name];
+   if(!presentation)throw new Error(`The rc.7 contract has no ${role} ${name} label and description`);
+   // pi-durable registers no label. It stays on the tool for hosts that show one, as Pi does.
+   return {...defineTool({
+   name,description:presentation.description,parameters:contract[role][name]!,replay:'safe',
    execute:async(args,api,context)=>{
     const result=await execute(name,role,args,api,context);
     const pending=options.settleStops&&(result.kind==='partial'||result.reason==='stop_not_confirmed');
@@ -248,7 +252,8 @@ export function createAuthorityTools(options: CoreOptions) {
     if(pending)output.push({type:'text',text:`Still stopping: ${names}. The stop is recorded and no new work starts. Settlement continues in the background. A later ${name} confirms completion.`});
     return {output};
    },
-  }));
+   }),label:presentation.label};
+  });
  }
  return {lead:tools('lead'),worker:tools('worker'),execute,contract};
 }

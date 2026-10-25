@@ -7,7 +7,9 @@
       "src/model-tool-contract/catalog.ts": "99b45ac334660047f573707aa7ba1de064212f847449c5019c05b32674c385a2",
       "src/model-tool-contract/result-projection.ts": "e5df0bc33d8617a5f749975b59f66d3b3c2b44aa0401b5b4d6a87b05452ce9cc",
       "src/model-tool-contract/worker-parameters.ts": "46e727fdbe3c1ea22e59e8b27cd0f349a80648a8bb1656b891cc05bfe0ddc4a8",
-      "src/task-authority/graph-control-schemas.ts": "0de45ef0eaa6774289c961bfd9f661a7a92078432c0e4b2167a503d840e1e709"
+      "src/task-authority/graph-control-schemas.ts": "0de45ef0eaa6774289c961bfd9f661a7a92078432c0e4b2167a503d840e1e709",
+      "src/model-tool-contract/pi-registration.ts": "487320f04f9480e8c661d61c5c54de4ed801e83d99545107a95ce0f009223aac",
+      "extensions/index.ts": "a5e233c6d011903b664261d3b5a31ebac2f0acf5af7f26497e373442312cb36f"
     }
   },
   "lead": {
@@ -9329,6 +9331,60 @@
           "additionalProperties": false
         }
       ]
+    }
+  },
+  "presentation": {
+    "lead": {
+      "team_create": {
+        "label": "Create Team",
+        "description": "Create and bind one active Team for this leader Session. Does not create Workers or Tasks."
+      },
+      "team_sync": {
+        "label": "Sync Team",
+        "description": "Return a whole-Team snapshot or incremental coordination updates. Use task_read for selected complete Task cards. Snapshots also list recent received Alerts; recent is not unresolved."
+      },
+      "ensure_worker": {
+        "label": "Ensure Worker",
+        "description": "Create or reuse a Worker for a standing area. Assign work with task_graph_apply."
+      },
+      "task_graph_apply": {
+        "label": "Apply Task Graph",
+        "description": "Atomically apply the complete assigned Task graph revision. Task authority then derives readiness and bounded failure routing."
+      },
+      "task_read": {
+        "label": "Read Tasks",
+        "description": "Read complete current cards for selected Tasks. Use team_sync for whole-Team observation."
+      },
+      "task_update": {
+        "label": "Update Tasks",
+        "description": "Apply one exact-version Task transition or context update. Waiting and ready remain derived."
+      },
+      "worker_stop": {
+        "label": "Stop Worker",
+        "description": "Stop one Worker after its nonterminal assigned Tasks resolve. Does not change Tasks."
+      },
+      "team_shutdown": {
+        "label": "Shutdown Team",
+        "description": "Stop remaining Workers and close the Team. A partial failure leaves it active for retry."
+      },
+      "alert_send": {
+        "label": "Send Alert",
+        "description": "Send exceptional Alerts to a Worker or announce to *. Accepted means stored, not presented or processed. Task state stays unchanged."
+      }
+    },
+    "worker": {
+      "task_read": {
+        "label": "Read Task",
+        "description": "Read current Task cards by ID from the active Team."
+      },
+      "task_update": {
+        "label": "Update Task",
+        "description": "Apply one explicit graph-native Task transition with an exact Task version. dependency_waiting and ready are derived."
+      },
+      "alert_send": {
+        "label": "Send Alert",
+        "description": "Send exceptional clarification or attention to team-lead. Accepted means stored, not presented or processed."
+      }
     }
   }
 }
