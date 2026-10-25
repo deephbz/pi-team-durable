@@ -1,0 +1,59 @@
+{
+  "name": "@hypercarrier/pi-team-durable",
+  "version": "0.1.0-rc.1",
+  "description": "Pi Team Bright semantics on pi-durable: one Task authority per Team, Workers as durable subthreads, accepted-then-delivered notices.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deephbz/pi-team-durable.git"
+  },
+  "homepage": "https://github.com/deephbz/pi-team-durable#readme",
+  "bugs": {
+    "url": "https://github.com/deephbz/pi-team-durable/issues"
+  },
+  "author": "deephbz",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19"
+  },
+  "exports": {
+    "./authority": {
+      "types": "./dist/authority/index.d.ts",
+      "import": "./dist/authority/index.js",
+      "default": "./dist/authority/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp src/authority/rc7-contract.json dist/authority/",
+    "prepare": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "verify:package": "node scripts/verify-package.mjs"
+  },
+  "dependencies": {
+    "typebox": "1.3.27"
+  },
+  "peerDependencies": {
+    "@earendil-works/chord": "1.4.0",
+    "@earendil-works/pi-ai": "1.4.0",
+    "@earendil-works/pi-durable": "1.4.0"
+  },
+  "devDependencies": {
+    "@earendil-works/chord": "1.4.0",
+    "@earendil-works/pi-ai": "1.4.0",
+    "@earendil-works/pi-durable": "1.4.0",
+    "@hypercarrier/pi-team-bright": "0.25.1",
+    "@types/node": "^22.19.0",
+    "jiti": "2.7.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}
