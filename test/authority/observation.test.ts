@@ -26,6 +26,7 @@ test('two sync calls reserve successive pages; persisted response plus run succe
   await observe(f.harness,context);
   const after=await f.root.commit(async tx=>plain(await observations(tx)),context);
   expect(after.acknowledged).toBe(pages[1].through);expect(Object.values(after.pages).every(p=>p.state==='acknowledged')).toBe(true);
+  expect(Object.values(after.pages).every(p=>p.pruned&&p.body===undefined)).toBe(true);expect(after.proofs).toEqual({});
   expect(f.faux.state.callCount).toBe(3);
  }finally{await f.close();}
 });
@@ -38,12 +39,13 @@ test('model success followed by a failed tool and failed run releases both pages
   await observe(f.harness,context);
   const before=await f.root.commit(async tx=>plain(await observations(tx)),context);
   expect(before.acknowledged).toBe(0);expect(Object.values(before.pages).map(p=>p.state)).toEqual(['released','released']);
+  expect(Object.values(before.pages).every(p=>typeof p.body==='string')).toBe(true);expect(before.proofs).toEqual({});
   f.faux.setResponses([syncCall('again-one'),syncCall('again-two'),syncCall('again-three'),answer('Recovered')]);
   const recovered=await f.root.submit({type:'input',content:'Read released pages.'},context);expect((await recovered.wait(context)).status).toBe('done');
   await observe(f.harness,context);
   const after=await f.root.commit(async tx=>plain(await observations(tx)),context);
   expect(Object.values(after.pages).map(p=>p.state)).toEqual(['replaced','replaced','acknowledged','acknowledged']);
-  expect(after.acknowledged).toBe(2);
+  expect(after.acknowledged).toBe(2);expect(Object.values(after.pages).every(p=>p.pruned&&p.body===undefined)).toBe(true);
  }finally{await f.close();}
 });
 

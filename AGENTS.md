@@ -9,11 +9,15 @@ runtime of its own.
 1. `README.md`: purpose, status, known issues, API.
 2. `src/authority/index.ts`: the public export. Do not export more without a
    decision.
-3. `docs/maintainers/releasing.md`: before any release.
+3. `test/README.md`: the differential oracle.
+4. `docs/maintainers/releasing.md`: before any release.
 
 ## Rules
 
-- Keep the persisted value `sender: 'durable-team'` unchanged.
+- Keep the persisted value `sender: 'durable-team'` and the frozen oracle bytes in
+  `test/oracle/authority` unchanged. Replace the oracle only through an explicit
+  baseline decision.
+- `src/testing.ts` is unstable test support. Add a name only for a named consumer.
 - Keep the peer dependencies on `@earendil-works/*` pinned exactly.
 - Run tests proportional to the change. Run `npm run build`, `npm run typecheck`,
   `npm test` and `npm run verify:package` once on the final tree.

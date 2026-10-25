@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { Check } from 'typebox/value';
+import { Compile, type Validator } from 'typebox/compile';
 import type { TSchema } from 'typebox';
 import type { Result } from './state.ts';
 
@@ -8,10 +8,21 @@ export type ToolName = typeof TOOL_NAMES[number];
 export type Role = 'lead' | 'worker';
 export interface Contract { lead: Record<ToolName, TSchema>; worker: Partial<Record<ToolName, TSchema>>; results: Record<ToolName, TSchema> }
 // Generated from the pinned executable rc.7 contract, not the stale agent surface.
-const source: Contract = JSON.parse(readFileSync(new URL('./rc7-contract.json', import.meta.url), 'utf8'));
+const source=readFileSync(new URL('./rc7-contract.json', import.meta.url), 'utf8');
+const patchedContracts=new Map<number,string>();
+const validators=new Map<string,Validator>();
+export function checkSchema(schema:TSchema,value:unknown):boolean {
+ const key=JSON.stringify(schema,(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)
+  ?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a<b?-1:a>b?1:0)):value);
+ let validator=validators.get(key);
+ if(!validator){validator=Compile(JSON.parse(key));validators.set(key,validator);}
+ return validator.Check(value);
+}
 export function contracts(goalMaxLength = 1600): Contract {
  if (!Number.isSafeInteger(goalMaxLength) || goalMaxLength < 1) throw new Error('goalMaxLength must be a positive safe integer');
- const copy: Contract = structuredClone(source);
+ const cached=patchedContracts.get(goalMaxLength);
+ if(cached!==undefined)return JSON.parse(cached) as Contract;
+ const copy:Contract=JSON.parse(source);
  function patch(value: unknown): void {
   if (!value || typeof value !== 'object') return;
   const node = value as Record<string, unknown>;
@@ -22,9 +33,10 @@ export function contracts(goalMaxLength = 1600): Contract {
   for (const child of Object.values(node)) patch(child);
  }
  patch(copy);
+ patchedContracts.set(goalMaxLength,JSON.stringify(copy));
  return copy;
 }
 export function checkResult(contract: Contract, name: ToolName, value: Result): Result {
- if (!Check(contract.results[name], value)) throw new Error(`PTB ${name} produced a result outside the rc.7 contract: ${JSON.stringify(value)}`);
+ if (!checkSchema(contract.results[name], value)) throw new Error(`PTB ${name} produced a result outside the rc.7 contract: ${JSON.stringify(value)}`);
  return value;
 }

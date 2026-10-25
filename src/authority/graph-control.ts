@@ -250,7 +250,7 @@ export interface GraphTransitionResult {
 export type GraphControlResult = GraphApplyResult | GraphTransitionResult;
 export type GraphControlReceipt = GraphControlResult & { replayed: boolean };
 
-interface StoredReceipt {
+export interface StoredReceipt {
   operationId: string;
   fingerprint: string;
   result: GraphControlResult;

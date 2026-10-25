@@ -1,13 +1,14 @@
 import type { Context } from '@earendil-works/chord/context';
-import { configure,type Harness,type Extension,type Tx } from '@earendil-works/pi-durable';
+import { configure,type Harness,type Extension } from '@earendil-works/pi-durable';
 import { catalogOf,createAuthorityTools,type CoreApi,type CoreOptions } from './tools.ts';
 import { createAnchoredConversation,WorkerAnchor } from './anchor.ts';
 import type { AbortRun } from './interrupt.ts';
 import { createDeliver,scheduleDeliveries } from './delivery.ts';
 import { createNotifier } from './notifier.ts';
-import { observations,observationExtension,type ObservationPortResolver } from './observation.ts';
+import { openObservations,startObservationEpoch,observationExtension,type ObservationPortResolver } from './observation.ts';
 import { sync } from './sync.ts';
-import { open,plain,event,type State,type StopIntent } from './state.ts';
+import { event,type StopIntent } from './state.ts';
+import { openAuthority as open,flushAuthority,allObligations,setObligationState,type Authority as State } from './store.ts';
 
 // Structural host port. The package never imports node policy or owns a startup reconciler.
 export interface StopPlan { id:string; conversations?:string[]; tasks?:string[] }
@@ -32,15 +33,15 @@ export async function confirmStop(harness:Harness,id:string,outcome:StopOutcome,
   }
  },context);
 }
-function addMechanicStops(s:State,shutdown:boolean):string|undefined {
- const team=s.team.current!;
+async function addMechanicStops(s:State,shutdown:boolean):Promise<string|undefined> {
+ const team=s.team.current!,obligations=await allObligations(s);
  for(const intent of Object.values(s.team.stops)){
   if(intent.epoch!==team.epoch||intent.confirmed)continue;
-  for(const o of Object.values(s.outbox.obligations))if(o.epoch===team.epoch&&o.recipient===intent.worker&&o.deliveryTaskId&&!intent.tasks.includes(o.deliveryTaskId))intent.tasks.push(o.deliveryTaskId);
+  for(const o of obligations)if(o.epoch===team.epoch&&o.recipient===intent.worker&&o.deliveryTaskId&&!intent.tasks.includes(o.deliveryTaskId))intent.tasks.push(o.deliveryTaskId);
  }
  if(!shutdown)return;
  const key=`${team.epoch}:shutdown-mechanics`;
- const tasks=Object.values(s.outbox.obligations).filter(o=>o.epoch===team.epoch&&o.deliveryTaskId).map(o=>o.deliveryTaskId!);
+ const tasks=obligations.filter(o=>o.epoch===team.epoch&&o.deliveryTaskId).map(o=>o.deliveryTaskId!);
  if(team.notifierId)tasks.push(team.notifierId);
  s.team.stops[key]??={epoch:team.epoch,tasks,conversations:[],confirmed:false};
  return key;
@@ -55,8 +56,9 @@ export async function closing(harness:Harness,conversationId:string,context:Cont
    const key=`${team.epoch}:stop:${w.name}:g${w.generation}`;w.state='stopping';
    s.team.stops[key]??={epoch:team.epoch,worker:w.name,generation:w.generation,binding:{conversationId:w.conversationId,anchorId:w.anchorId},tasks:[w.anchorId],conversations:[w.conversationId],confirmed:false};
   }
-  for(const o of Object.values(s.outbox.obligations))if(o.epoch===team.epoch)o.state='retired';
-  addMechanicStops(s,true);
+  for(const o of await allObligations(s))if(o.epoch===team.epoch)await setObligationState(s,o,'retired');
+  await addMechanicStops(s,true);
+  flushAuthority(s);
   return Object.entries(s.team.stops).filter(([,i])=>i.epoch===team.epoch&&!i.confirmed).map(([id,i])=>stopPlan(id,i));
  },context);
 }
@@ -79,10 +81,10 @@ export function createTeamRuntime(options:RuntimeOptions){
   settleStops:async(stops,context,api)=>stops.length?(await options.stop(api,stops.map(s=>stopPlan(s.key,s.intent)),context)).map(o=>o.status==='settled'):[],
   afterCommand:async(tx,s,name,result)=>{
    const team=s.team.current;if(!team||team.lifecycle!=='active')return;
-   if(name==='team_create'){const o=await observations(tx);o.epoch=team.epoch;o.acknowledged=0;o.paused=false;}
+   if(name==='team_create'){startObservationEpoch(await openObservations(tx),team.epoch);}
    if(!team.notifierId&&!team.shutdownPending)team.notifierId=await tx.createTask(Notify,{epoch:team.epoch},{conversationId:team.lead,ownership:{kind:'conversation'},background:true,abandonOnRestart:false});
    await scheduleDeliveries(tx,s,Deliver);
-   const extra=addMechanicStops(s,name==='team_shutdown');
+   const extra=name==='worker_stop'||name==='team_shutdown'?await addMechanicStops(s,name==='team_shutdown'):undefined;
    if(extra&&Array.isArray(result.stops)&&!result.stops.includes(extra))result.stops.push(extra);
   },
  });

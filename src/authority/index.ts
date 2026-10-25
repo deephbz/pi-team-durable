@@ -1,5 +1,5 @@
 export { createTeamRuntime,pendingStops,confirmStop,closing,stopPlan,type RuntimeOptions,type StopPlan,type StopOutcome } from './runtime.ts';
-export { observe,ObservationDoc,observations,type Observations,type Page,type ObservationPortResolver } from './observation.ts';
+export { observe,ObservationDoc,observations,observationStats,openObservations,type Observations,type Page,type ObservationPortResolver } from './observation.ts';
 export { TeamDoc,GraphDoc,JournalDoc,OutboxDoc,ReceiptDoc,open,plain,type TeamState,type GraphState,type JournalState,type OutboxState,type Team,type Worker,type ModelRole,type ModelRoleCatalog,type State } from './state.ts';
 export { GraphTaskController } from './graph-control.ts';
 export { projectGraphTaskCards } from './graph-card.ts';
@@ -9,3 +9,7 @@ export { TASK_ID_MAX_LENGTH } from './limits.ts';
 export { deliveryDraft,deliveryInput,SENDER_LIMIT,type DeliveryInput,type TeamNoticeData } from './delivery.ts';
 export { pageDraft } from './notifier.ts';
 export { updates, pageEvents, UPDATE_PAGE_EVENTS, UPDATE_SCAN_ENTRIES } from './sync.ts';
+export { HeadDoc,TaskDoc,OperationDoc,ObligationDoc,AlertDoc,CallDoc,DirectCallDoc,openAuthority,taskAddress,type AuthorityHead,type TaskRecord } from './store.ts';
+export { readTeamPanel,readTeamSummary } from './panel.ts';
+export { readObservationCursor } from './observation-store.ts';
+export { taskCards } from './store.ts';

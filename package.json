@@ -1,6 +1,6 @@
 {
   "name": "@hypercarrier/pi-team-durable",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.2",
   "description": "Pi Team Bright semantics on pi-durable: one Task authority per Team, Workers as durable subthreads, accepted-then-delivered notices.",
   "repository": {
     "type": "git",
@@ -21,6 +21,11 @@
       "types": "./dist/authority/index.d.ts",
       "import": "./dist/authority/index.js",
       "default": "./dist/authority/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "default": "./dist/testing.js"
     }
   },
   "files": [
@@ -36,6 +41,7 @@
     "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:oracle": "node test/oracle-run.ts",
     "verify:package": "node scripts/verify-package.mjs"
   },
   "dependencies": {

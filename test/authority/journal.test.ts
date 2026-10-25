@@ -3,7 +3,8 @@ import { performance } from 'node:perf_hooks';
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context';
 import { createModels } from '@earendil-works/pi-ai/models';
 import { createRegistry,Harness,MemoryStorage } from '@earendil-works/pi-durable';
-import { event,open,plain,JOURNAL_RESIDENT_LIMIT,JournalDoc } from '../../src/authority/state.ts';
+import { event,open,plain,JOURNAL_RESIDENT_LIMIT } from '../../src/authority/state.ts';
+import { openAuthority } from '../../src/authority/store.ts';
 
 test('long-idle journal retains history with bounded cold-loaded projection',async()=>{
  class ReopenableMemory extends MemoryStorage { override async close(){} }
@@ -18,7 +19,7 @@ test('long-idle journal retains history with bounded cold-loaded projection',asy
   const writeMs=performance.now()-started;
   await harness.close(context);harness=await Harness.open(storage,options,context);
   const coldStart=performance.now();const reopened=await harness.root(context);
-  const journal=await reopened.commit(async tx=>plain(await tx.doc(JournalDoc)),context);
+  const journal=await reopened.commit(async tx=>plain((await openAuthority(tx)).journal),context);
   const coldMs=performance.now()-coldStart,bytes=Buffer.byteLength(JSON.stringify(journal));
   expect(journal.seq).toBe(2000);expect((journal.events as any[]).length).toBe(JOURNAL_RESIDENT_LIMIT);expect(bytes).toBeLessThan(16000);
   const first=await reopened.entries({order:'ascending'},1,undefined,context);

@@ -1,0 +1,24 @@
+{
+  "sourceRef": "d6f87cdacdc973801cf39fa513f5134a2582722b",
+  "sourceDirectory": "packages/durable-team/src/authority",
+  "files": {
+    "anchor.ts": "bd696bd300f110c96eafbe98ddd59f1b9c1474bc89808690bf857cc11ac12eae",
+    "card-types.ts": "d8f16db6435c2a41bb0c93e275e6bebc2d917b70d49fafd150af7258eab214f7",
+    "contracts.ts": "c6ad80bf0ceb6a23adaba240428abae30eed966d25ea0666a5b4c268be4b6ea7",
+    "delivery.ts": "43dfb4af4acda372847b85d6e9426bb968310c4435e935237d4e03991fe8b496",
+    "graph-card.ts": "b88d02c532266a1757503fefaf9c666d4ae1751b4457efde0c4be6369aaa4d4f",
+    "graph-control.ts": "41ab62a61c208e1791a493ae99877ec15b38266700de214d0807a3a3b15c5ba7",
+    "index.ts": "ab40d22c60d81ead180a1bb6f33086c3eda08ba62064e183ffca7d68f3f6025b",
+    "interrupt.ts": "c786a5d7b4a42c127ef160c14d0f7a222ffff334307aea7fcbd9944894393223",
+    "limits.ts": "e0e2797382a108576ec60d419e3b3c031e47e05bc09a59caa138290984286490",
+    "notifier.ts": "0c1c564dfbf998a07b05249c11adef22ce36d031c7a2bb149f62c2d7333f2db0",
+    "observation.ts": "98bb25ce3e7f779fad70d6bbf8f046ef0c4cfb3bdd2ffff0c68db2992aa1dae2",
+    "projection.ts": "fdd6b6407bf22e9dbd19b0a53c091110a27c34c96efcc3fe46596e718f38bbda",
+    "rc7-contract.json": "170ac42291d272f21a0362aaddfe2cd03055a89fb7433a4c764d24013cadff38",
+    "runtime.ts": "51416810290dd8cdf9dbf41b631c0c3a0655ae49c5abfae94da589af9e900c81",
+    "state.ts": "3564e2aef126c93e43d6a3dcacea1b621f56dc6d60342ab4547cba5adb3469e7",
+    "sync.ts": "469192fb62fc84a440e6f734408b51281bf543cfe3d529ffb7c0087646ff5b1e",
+    "task-version-ref.ts": "50fabe38791f59969ec27bf90d700a45a6b9354ed7356abc94dab6fdc52bbded",
+    "tools.ts": "cd714b27a354861bc8a77e99a95b8f6e0db49de8f14325d2ab46524f60276350"
+  }
+}
