@@ -29,15 +29,33 @@ If a published version is bad, deprecate it and publish a corrected higher
 version. Never retarget a pushed tag of a published version or replace package
 bytes.
 
-## The first version
+## The first versions
 
-npm trusted publishing needs an existing package, so the first version,
-`0.1.0-rc.1`, was published by hand from a clean checkout of its tagged commit.
-It is the one exception to CI-only releases and has no npm provenance. Its tag
-push runs `publish.yml`, whose publish step fails because the version exists.
-Its GitHub Release was created by hand. After the first publish, trusted
-publishing was configured for `publish.yml` and the `npm` environment. Every
-later version publishes from CI.
+npm trusted publishing needs an existing package, and `npm trust` needs the
+owner's two-factor authentication. So `0.1.0-rc.1` and `0.1.0-rc.2` were
+published by hand, each from a clean checkout of its tagged commit, to npm
+`next`. They are the exceptions to CI-only releases and have no npm provenance.
+Their tag pushes ran `publish.yml`: the CI gate passed, then the publish step
+failed because the version already existed. Their GitHub Releases were created
+by hand with `gh release create --prerelease`.
+
+Until trusted publishing exists, publish each release the same way and create
+the GitHub Release by hand. The owner configures trust once, with two-factor
+authentication, using the owner's own npm login:
+
+```sh
+npm trust github @hypercarrier/pi-team-durable --file publish.yml \
+  --repo deephbz/pi-team-durable --env npm --allow-publish
+```
+
+After that, pushing a tag publishes from CI.
+
+## The latest dist-tag
+
+A first publish always sets `latest`, and npm does not allow removing it. A
+later prerelease published with `--tag next` leaves `latest` behind. Until
+`0.1.0` ships, move it by hand:
+`npm dist-tag add @hypercarrier/pi-team-durable@<version> latest`.
 
 ## Verification before a release
 
