@@ -174,8 +174,8 @@ installed devDependency `@hypercarrier/pi-team-bright@0.25.1`.
 Each role's tool labels and descriptions come from Pi Team Bright's own
 registration. `scripts/pi-registration.mjs` captures it per role through an
 inert host. The parity test compares every durable tool with the installed
-`@hypercarrier/pi-team-bright`. Known gap: Pi's Worker `alert_send` requires
-non-empty `text` and `task_id`; the durable schema does not yet.
+`@hypercarrier/pi-team-bright`. Pi registers the Worker tools outside its
+catalog, so their parameter schemas also come from that registration.
 
 ```sh
 npm ci

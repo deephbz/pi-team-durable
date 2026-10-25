@@ -402,10 +402,12 @@
           ]
         },
         "text": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "task_id": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "task_version": {
           "type": "string",

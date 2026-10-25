@@ -63,6 +63,18 @@ test('a P receipt with undeclared fields replays its accepted result after upgra
  }finally{await h.close(context);}
 });
 
+test('a Worker Alert with empty text or task_id fails Pi\'s schema; whitespace text stays refused',async()=>{
+ const f=await runtimeFixture();
+ try{
+  await f.runtime.core.execute('ensure_worker','lead',{name:'builder',scope:'Build'},f.api(),context);
+  const worker=(await f.state()).team.current!.workers.builder,call=()=>({...f.api(),conversationId:worker.conversationId});
+  for(const input of [{kind:'attention',text:''},{kind:'attention',text:'Linked',task_id:''}])
+   await expect(f.runtime.core.execute('alert_send','worker',input,call(),context)).rejects.toThrow('Invalid worker alert_send parameters');
+  expect(await f.runtime.core.execute('alert_send','worker',{kind:'attention',text:'   '},call(),context)).toMatchObject({kind:'refused',reason:'invalid_fanout'});
+  expect((await f.state()).outbox.alerts).toEqual({});
+ }finally{await f.close();}
+});
+
 test('a Worker extra interrupt cannot abort the busy lead or mark its Alert as interrupting',async()=>{
  let calls=0;const f=await runtimeFixture([],port=>async(...args)=>{calls++;return port(...args);});
  const started=deferred(),release=deferred(),admitted=deferred();let aborted=false;

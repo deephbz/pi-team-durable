@@ -1,6 +1,6 @@
 {
   "name": "@hypercarrier/pi-team-durable",
-  "version": "0.1.0-rc.2",
+  "version": "0.1.0-rc.3",
   "description": "Pi Team Bright semantics on pi-durable: one Task authority per Team, Workers as durable subthreads, accepted-then-delivered notices.",
   "repository": {
     "type": "git",
