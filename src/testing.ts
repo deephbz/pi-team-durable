@@ -5,6 +5,7 @@
  */
 export { Deliver } from './authority/delivery.ts';
 export { createAuthorityTools,type CoreApi } from './authority/tools.ts';
-export { flushAuthority,graphCommand,taskRecord,type Authority } from './authority/store.ts';
+export { addAlert,addObligation,flushAuthority,graphCommand,obligation,setObligationState,taskRecord,type Authority } from './authority/store.ts';
+export type { Alert,Obligation } from './authority/state.ts';
 export { ObservationHeadDoc,PageDoc,PageBodyDoc,reserve,startObservationEpoch } from './authority/observation.ts';
 export { advanceAcknowledged,page,retireBody,savePage } from './authority/observation-store.ts';

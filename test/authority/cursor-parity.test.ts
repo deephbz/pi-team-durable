@@ -13,7 +13,7 @@ import { ObservationDoc as PObservationDoc } from '../oracle/authority/observati
 // P's page formula is independent of the indexed cursor and the indexed update projection.
 // Each seed acknowledges pages out of order across a gap, rebuilds the observation slice as P documents,
 // and starts a second epoch. The test compares the current update pages with P's pages after every acknowledgement.
-const SEEDS=Number(process.env.CURSOR_PARITY_SEEDS??40);
+const SEEDS=Number(process.env.CURSOR_PARITY_SEEDS??200);
 for(const seed of Array.from({length:SEEDS},(_,i)=>i+1))test(`indexed cursor and update pages match P across acknowledgement gaps, seed ${seed}`,async()=>{
  const h=await Harness.open(new MemoryStorage(),{models:createModels(),registry:createRegistry(),now:()=>1000,setTimer:()=>()=>{}},context);
  try{

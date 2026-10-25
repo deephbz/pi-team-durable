@@ -6,6 +6,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// The runtime names that ./testing must export: the internals HyperCarrier's AmPi tests import.
+const TESTING_NAMES = ['Deliver', 'createAuthorityTools', 'flushAuthority', 'graphCommand', 'taskRecord', 'addAlert', 'addObligation', 'obligation',
+  'setObligationState', 'ObservationHeadDoc', 'PageDoc', 'PageBodyDoc', 'reserve', 'startObservationEpoch', 'advanceAcknowledged', 'page', 'retireBody', 'savePage'];
+
 const root = fileURLToPath(new URL('..', import.meta.url));
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 if (!fs.existsSync(path.join(root, 'dist'))) throw new Error('dist is missing; run `npm run build` first');
@@ -32,6 +36,11 @@ try {
       const mod = await import(name);
       if (Object.keys(mod).length === 0) throw new Error(name + ' exports nothing');
     }
+    if (names.some(name => name.endsWith('/testing'))) {
+      const testing = await import(${JSON.stringify(`${manifest.name}/testing`)});
+      const missing = ${JSON.stringify(TESTING_NAMES)}.filter(name => testing[name] === undefined);
+      if (missing.length) throw new Error('./testing lacks ' + missing.join(', '));
+    }
     const { createTeamRuntime } = await import(${JSON.stringify(`${manifest.name}/authority`)});
     const runtime = createTeamRuntime({ modelRoles: [], abortRun: async () => ({}), stop: async () => [], observationPort: async () => ({ commit() {} }) });
     if (!runtime.extensions?.length) throw new Error('createTeamRuntime returned no extensions');
@@ -42,7 +51,10 @@ try {
   fs.writeFileSync(path.join(work, 'probe.ts'),
     `import { createTeamRuntime, TeamDoc, type StopPlan } from '${manifest.name}/authority';\n` +
     `const runtime = createTeamRuntime({ modelRoles: [], abortRun: async () => ({}) as never, stop: async (_api, plans: StopPlan[]) => plans.map(() => ({}) as never), observationPort: async () => ({ commit: () => undefined as never }) });\n` +
-    `void runtime; void TeamDoc;\n`);
+    `void runtime; void TeamDoc;\n` +
+    (manifest.exports['./testing'] ? `import { addAlert, createAuthorityTools, type Alert, type Authority, type CoreApi, type Obligation } from '${manifest.name}/testing';\n` +
+      `declare const alert: Alert; declare const obligation: Obligation; declare const authority: Authority;\n` +
+      `void addAlert(authority, alert); void createAuthorityTools; void obligation; void (null as unknown as CoreApi);\n` : ''));
   fs.writeFileSync(path.join(work, 'tsconfig.json'), JSON.stringify({ compilerOptions: { module: 'NodeNext', moduleResolution: 'NodeNext', target: 'ES2023', strict: true, noEmit: true, skipLibCheck: true, types: ['node'], typeRoots: [path.join(root, 'node_modules/@types')] }, files: ['probe.ts'] }));
   execFileSync(path.join(root, 'node_modules', '.bin', 'tsc'), ['-p', path.join(work, 'tsconfig.json')], { cwd: work, stdio: 'inherit' });
   console.log('packed artifact: file list, plain-Node import, TypeScript consumer ok');

@@ -53,10 +53,10 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - if: steps.prepare.outputs.verified != 'true'
-        run: npx vitest run --exclude test/authority/incremental-graph-control.test.ts
+        run: npx vitest run --exclude test/authority/incremental-graph-control.test.ts --exclude test/authority/cursor-parity.test.ts
 
-  # The 2,000 seeded graph-controller sequences (about 80 s in one process), split in four.
-  # Together with `test` they run every test file that `npm test` runs.
+  # The two seeded suites that dominate wall time run in their own jobs; with `test` they run every test file that
+  # `npm test` runs. Graph-controller sequences: 2,000 seeds (about 80 s in one process), split in four.
   sequences:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -74,6 +74,19 @@ jobs:
         env:
           PTB_SEQUENCE_SHARD: ${{ matrix.shard }}
         run: npx vitest run test/authority/incremental-graph-control.test.ts
+
+  # Cursor and update-page parity against the frozen port: 200 seeds.
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - id: prepare
+        uses: ./.github/actions/prepare
+        with:
+          node-version: 24.x
+      - if: steps.prepare.outputs.verified != 'true'
+        run: npx vitest run test/authority/cursor-parity.test.ts
 
   # Differential oracle against the frozen port: 100 seeds over 4 processes. Run 500 or more by hand before a release.
   oracle:
@@ -94,7 +107,7 @@ jobs:
 
   ci:
     if: always()
-    needs: [check, test, sequences, oracle]
+    needs: [check, test, sequences, parity, oracle]
     runs-on: ubuntu-latest
     steps:
       - name: Require every job
