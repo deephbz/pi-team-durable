@@ -14,8 +14,8 @@ import { createTeamRuntime as createOracle } from '../oracle/authority/runtime.t
 import * as oracleDelivery from '../oracle/authority/delivery.ts';
 import * as oraclePages from '../oracle/authority/notifier.ts';
 import type { Page } from '../oracle/authority/observation.ts';
-import type { CoreApi } from '../../src/authority/tools.ts';
-import type { ToolName, Role } from '../../src/authority/contracts.ts';
+import { declaredParameters, type CoreApi } from '../../src/authority/tools.ts';
+import { contracts, type ToolName, type Role } from '../../src/authority/contracts.ts';
 import { NativeIdBijection } from './native-id-bijection.ts';
 
 type CarrierRun = { actor: string; taskId?: number };
@@ -32,6 +32,12 @@ type Definition = { key: string; title: string; goal: string; assignee: string; 
 const keys = Array.from({ length: 7 }, (_, i) => `t${i}`);
 const workers = ['w0', 'w1', 'w2'];
 const copy = <T>(x: T): T => structuredClone(x);
+const declaredContract = contracts();
+// P acted on undeclared role arguments. The oracle gets only the declared input that the current tools act on.
+function declared(command: Command): Command {
+  const schema = declaredContract[command.actor ? 'worker' : 'lead'][command.name];
+  return schema ? { ...command, args: declaredParameters(schema, copy(command.args)) } : command;
+}
 
 async function fixture(factory: typeof RuntimeFactory) {
   const models = createModels();
@@ -125,7 +131,7 @@ async function runSeed(seed: number, steps: number, targeted = false) {
     const reusedTool = history.some(c => c.id === command.id);
     history.push(command);
     try {
-      const expected = await oracle.execute(command), actual = await current.execute(command);
+      const expected = await oracle.execute(declared(command)), actual = await current.execute(against === 'oracle' ? declared(command) : command);
       identities.bindActors(oracle.actorIds(), current.actorIds());
       identities.compare(actual, expected, '$tool');
       if (expected.result?.kind === 'task_graph_applied' && !expected.result.replayed && !reusedTool) graphVersion = expected.result.graph_version;

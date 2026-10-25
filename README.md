@@ -70,7 +70,9 @@ observer, and structural stop ports. A host adapter registers this runtime.
   hash partitions index pending and unscheduled keys.
 - Nine lead tools and three Worker tools use the rc.7 contract. Exact conversation
   and generation bindings guard authority. A fork does not acquire an existing
-  Team's lead authority.
+  Team's lead authority. Each role acts only on its schema's declared fields,
+  including nested fields. Undeclared fields do not enter replay identity.
+  Only the lead can request an Alert interrupt.
 - `ptb.worker-anchor` owns a Worker conversation and renews a durable sleep.
   Lead Esc does not end it. Stops use stored target IDs through the node's single
   mark-before-resume fence. Failed confirmation retains the intent.

@@ -1,3 +1,4 @@
+import type { TSchema } from 'typebox';
 import type { Context } from '@earendil-works/chord/context';
 import { defineTool, LiveDoc, type ToolExecutionApi, type Tx } from '@earendil-works/pi-durable';
 import { contracts, checkSchema, checkResult, TOOL_NAMES, type Role, type ToolName } from './contracts.ts';
@@ -36,6 +37,15 @@ interface Args {
  to?: string; kind?: string; text?: string; task_version?: string; interrupt?:boolean;
 }
 const LEAD = 'team-lead';
+interface ParameterSchema extends TSchema { properties?:Record<string,ParameterSchema>; items?:ParameterSchema }
+/** The input a role tool acts on. Pi's role adapters forward declared fields, including nested Task definitions. */
+export function declaredParameters(schema:ParameterSchema,value:unknown):unknown {
+ const {items,properties}=schema;
+ if(Array.isArray(value)&&items)return value.map(item=>declaredParameters(items,item));
+ if(value!==null&&typeof value==='object'&&!Array.isArray(value)&&properties)
+  return Object.fromEntries(Object.entries(value).filter(([key])=>Object.hasOwn(properties,key)).map(([key,item])=>[key,declaredParameters(properties[key],item)]));
+ return value;
+}
 class Declined extends Error { readonly result:Result; constructor(result: Result) { super(String(result.message ?? result.reason)); this.result=result; } }
 const decline = (result: Result): never => { throw new Declined(result); };
 function unavailable(name: ToolName, args: Args, reason: string, message: string): never {
@@ -137,16 +147,16 @@ export function createAuthorityTools(options: CoreOptions) {
    return {kind:'updated',operation_id:r.operationId,replayed:r.replayed,transition:r.transition,task:{id:r.task.id,status:r.task.state.kind,assignee:r.task.assignee,version:r.task.version},ready_task_ids:r.readyTaskIds,...(r.failureTraversal?{failure_traversal:{source_task_id:r.failureTraversal.sourceTaskId,target_task_id:r.failureTraversal.targetTaskId,traversal:r.failureTraversal.traversal}}:{})};
   }
   if(name==='alert_send') {
-   const to=role==='worker'?LEAD:a.to!;
+   const to=role==='worker'?LEAD:a.to!,interrupt=role==='lead'&&a.interrupt===true;
    if(!a.text?.trim() || a.task_version&&!a.task_id || (to==='*')!==(a.kind==='announcement')) return decline({kind:'refused',reason:'invalid_fanout',message:'Invalid Alert text, Task reference or announcement target.'});
    const recipients=to===LEAD?[{name:LEAD,conversationId:team.lead,generation:0}]:Object.values(team.workers).filter(w=>w.state==='active'&&(to==='*'||w.name===to)).map(w=>({name:w.name,conversationId:w.conversationId,generation:w.generation}));
    if(!recipients.length) return decline({kind:'refused',reason:to==='*'?'no_eligible_recipients':'recipient_not_current',message:'No current recipient.'});
    const id=`${team.epoch}:alert:${api.taskId}`;
-   await addAlert(s,plain({id,from:actor,kind:a.kind!,text:a.text.trim(),...(a.interrupt?{interrupt:true as const}:{}),task_id:a.task_id,task_version:a.task_version,receivedAt:new Date(api.now()).toISOString(),recipients}));
+   await addAlert(s,plain({id,from:actor,kind:a.kind!,text:a.text.trim(),...(interrupt?{interrupt:true as const}:{}),task_id:a.task_id,task_version:a.task_version,receivedAt:new Date(api.now()).toISOString(),recipients}));
    for(const recipient of recipients){
     const key=`${id}:${recipient.name}:g${recipient.generation}`;
-    const run=a.interrupt?(await tx.doc(LiveDoc,recipient.conversationId)).run?.taskId:undefined;
-    await addObligation(s,{key,epoch:team.epoch,kind:'alert',recipient:recipient.name,conversationId:recipient.conversationId,generation:recipient.generation,alertId:id,state:'pending',acceptedAt:api.now(),...(a.interrupt?{interrupt:true as const,...(run!==undefined?{interruptRun:run}:{})}:{})});
+    const run=interrupt?(await tx.doc(LiveDoc,recipient.conversationId)).run?.taskId:undefined;
+    await addObligation(s,{key,epoch:team.epoch,kind:'alert',recipient:recipient.name,conversationId:recipient.conversationId,generation:recipient.generation,alertId:id,state:'pending',acceptedAt:api.now(),...(interrupt?{interrupt:true as const,...(run!==undefined?{interruptRun:run}:{})}:{})});
    }
    await event(tx,s,actor,'alert_accepted',{at:new Date(api.now()).toISOString()});
    return {kind:'alert_sent',accepted_recipients:recipients.map(r=>r.name),failed_recipients:[],...(a.task_id?{task_id:a.task_id}:{}),...(a.task_version?{task_version:a.task_version}:{})};
@@ -177,6 +187,9 @@ export function createAuthorityTools(options: CoreOptions) {
  }
  async function execute(name:ToolName,role:Role,input:unknown,api:CoreApi,context:Context):Promise<Result> {
   const schema=contract[role][name];
+  // Earlier receipts hashed raw arguments. Their exact input must still replay without executing again.
+  const rawFingerprint=JSON.stringify({name,role,input,conversation:api.conversationId});
+  if(schema)input=declaredParameters(schema,input);
   if(!schema||!checkSchema(schema,input)) throw new Error(`Invalid ${role} ${name} parameters`);
   const a=input as Args;
   const fingerprint=JSON.stringify({name,role,input,conversation:api.conversationId});
@@ -184,7 +197,7 @@ export function createAuthorityTools(options: CoreOptions) {
    const result=await api.commit(async tx=>{
     const native=(await tx.task(api.taskId))?.kind==='pi.tool';
     const s=await open(tx), receipt=await callReceipt(s,api.taskId,native),saved=receipt.fingerprint?receipt:undefined;s.deferFlush=true;
-    if(saved){if(saved.fingerprint!==fingerprint)throw new Error('Durable tool identity reused with changed input');return saved.result?(JSON.parse(saved.result) as Result):plain({stops:saved.stops!,epoch:saved.epoch!});}
+    if(saved){if(saved.fingerprint!==fingerprint&&saved.fingerprint!==rawFingerprint)throw new Error('Durable tool identity reused with changed input');return saved.result?(JSON.parse(saved.result) as Result):plain({stops:saved.stops!,epoch:saved.epoch!});}
     const r=await command(name,role,a,api,tx,s);
     if(name!=='task_read')await options.afterCommand?.(tx,s,name,r,api);
     if('kind' in r) {

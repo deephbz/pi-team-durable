@@ -55,6 +55,10 @@ transaction API. Synthetic run IDs remain exact.
 The generator also varies interrupting Alerts, sender, recipient, fanout,
 Task references, and carrier capture in random traces. The targeted cases
 check complete notice metadata, optional `interrupt: true`, bounded senders,
-and all interruption-content variants. Worker Alerts remain non-interrupting;
-P permits `interrupt` only on the lead's schema. Random invalid inputs still
-check refusal and error parity.
+and all interruption-content variants. Random invalid inputs still check
+refusal and error parity.
+
+P acted on undeclared role arguments, including a Worker's `interrupt`. The
+current tools act only on declared parameters. The harness therefore gives the
+oracle the declared input that the current tools see, and the candidate the raw
+command. Under `--against oracle`, both sides receive the declared input.
