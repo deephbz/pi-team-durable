@@ -1,6 +1,6 @@
 import type { TSchema } from 'typebox';
 import type { Context } from '@earendil-works/chord/context';
-import { defineTool, LiveDoc, type ToolExecutionApi, type Tx } from '@earendil-works/pi-durable';
+import { defineTool, type ToolExecutionApi, type Tx } from '@earendil-works/pi-durable';
 import { contracts, checkSchema, checkResult, TOOL_NAMES, type Role, type ToolName } from './contracts.ts';
 import { GraphControlRefusal, type GraphApplyResult, type GraphTransitionResult, type GraphTaskDefinitionInput, type GraphTaskTransition, type GraphVersionRef, type GraphTaskView } from './graph-control.ts';
 import type { TaskVersionRef } from './task-version-ref.ts';
@@ -155,8 +155,7 @@ export function createAuthorityTools(options: CoreOptions) {
    await addAlert(s,plain({id,from:actor,kind:a.kind!,text:a.text.trim(),...(interrupt?{interrupt:true as const}:{}),task_id:a.task_id,task_version:a.task_version,receivedAt:new Date(api.now()).toISOString(),recipients}));
    for(const recipient of recipients){
     const key=`${id}:${recipient.name}:g${recipient.generation}`;
-    const run=interrupt?(await tx.doc(LiveDoc,recipient.conversationId)).run?.taskId:undefined;
-    await addObligation(s,{key,epoch:team.epoch,kind:'alert',recipient:recipient.name,conversationId:recipient.conversationId,generation:recipient.generation,alertId:id,state:'pending',acceptedAt:api.now(),...(interrupt?{interrupt:true as const,...(run!==undefined?{interruptRun:run}:{})}:{})});
+    await addObligation(s,{key,epoch:team.epoch,kind:'alert',recipient:recipient.name,conversationId:recipient.conversationId,generation:recipient.generation,alertId:id,state:'pending',acceptedAt:api.now(),...(interrupt?{interrupt:true as const,interruptAt:'delivery' as const}:{})});
    }
    await event(tx,s,actor,'alert_accepted',{at:new Date(api.now()).toISOString()});
    return {kind:'alert_sent',accepted_recipients:recipients.map(r=>r.name),failed_recipients:[],...(a.task_id?{task_id:a.task_id}:{}),...(a.task_version?{task_version:a.task_version}:{})};

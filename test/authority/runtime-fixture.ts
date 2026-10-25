@@ -21,7 +21,7 @@ export function nextTask(harness:Harness,id:TaskId,predicate:(state:any)=>boolea
   if(publication.changes.some(c=>c.type==='task'&&c.value.id===id&&predicate(c.value.state))){off();resolve();}
  });});
 }
-export async function runtimeFixture(extra:Extension[]=[],wrapAbortRun:(port:AbortRun)=>AbortRun=port=>port){
+export async function runtimeFixture(extra:Extension[]=[],wrapAbortRun:(port:AbortRun)=>AbortRun=port=>port,clock?:{now:()=>number;setTimer:(callback:()=>void,delayMs:number)=>()=>void}){
  const models=createModels(),faux=fauxProvider({provider:'ptb-faux',api:'ptb-faux',models:[{id:'test'}],tokensPerSecond:0});models.setProvider(faux.provider);
  let harness!:Harness,now=1000;
  const registry=createRegistry();
@@ -42,13 +42,13 @@ export async function runtimeFixture(extra:Extension[]=[],wrapAbortRun:(port:Abo
  for(const extension of [...runtime.extensions,...extra])registry.install(extension);
  const storage=new ReopenableMemory();
  const reports:unknown[]=[];
- const options={models,registry,now:()=>now,setTimer:()=>()=>{},onWake:()=>{},onReport:(error:unknown)=>reports.push(error),settings:{retry:{maxRetries:0},compaction:{enabled:false,keepRecentTokens:0}}};
+ const options={models,registry,now:clock?.now??(()=>now),setTimer:clock?.setTimer??(()=>()=>{}),onWake:()=>{},onReport:(error:unknown)=>reports.push(error),settings:{retry:{maxRetries:0},compaction:{enabled:false,keepRecentTokens:0}}};
  harness=await Harness.open(storage,options,context);
  let root=await harness.root(context,{agent:{model:{provider:'ptb-faux',modelId:'test'},extensions:[runtime.mechanics,runtime.lead,...extra,runtime.observation]}});
  let n=1000000;
- const api=():CoreApi=>({taskId:++n as TaskId,conversationId:root.id,commit:root.commit.bind(root),now:()=>now,callId:`direct-${n}`});
+ const api=():CoreApi=>({taskId:++n as TaskId,conversationId:root.id,commit:root.commit.bind(root),now:options.now,callId:`direct-${n}`});
  await runtime.core.execute('team_create','lead',{name:'demo',purpose:'Test'},api(),context);
- return {runtime,faux,reports,api,storage,get root(){return root;},get harness(){return harness;},setNow:(value:number)=>now=value,
+ return {runtime,registry,faux,reports,api,storage,get root(){return root;},get harness(){return harness;},setNow:(value:number)=>now=value,
   state:()=>root.commit(async tx=>plain(await open(tx)),context),
   reopen:async()=>{await harness.close(context);harness=await Harness.open(storage,options,context);root=await harness.root(context);},
   close:()=>harness.close(context),

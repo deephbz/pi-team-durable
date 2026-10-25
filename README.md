@@ -26,7 +26,9 @@ notices.
   migration is one-way: rollback means restoring a backup. Back up the store, and
   stop every older node process first. 0.1.0-rc.1 stores version-1 documents.
   This version migrates them to version 2, and a downgrade cannot read a migrated
-  store.
+  store. 0.1.0-rc.3 also upgrades stored `ptb.deliver` tasks to task version 2.
+  Older versions then park those deliveries as `task_too_old`. This upgrade is
+  one-way too.
 
 Known issues:
 
@@ -34,8 +36,11 @@ Known issues:
    Team Bright retries it; this package does not.
 2. `team_sync` can replay pages that an earlier call released. Act only on
    `task_read`, and never call `team_sync` from a nested tool call.
-3. Interrupt: a Worker can interrupt the lead, the run to stop is chosen when the
-   Alert is accepted, and the abort has no settle bound.
+3. Interrupt fallback can leave an Alert queued. When a provider ignores the abort
+   for the full 10-second wait, the Alert is admitted while the run is busy. When
+   that run then ends by abort, the Alert waits until the next input starts a run.
+   An ordinary Alert queued before a run-only abort behaves the same. The cause is
+   pi-durable 1.4.0: an aborted run does not drain its inbox.
 4. An Alert can be admitted after its recipient is closed or fenced. After an owner
    Close, a busy Worker can still run one tool call.
 
@@ -80,13 +85,26 @@ observer, and structural stop ports. A host adapter registers this runtime.
   admission, and waits for settlement. Notices use `team.notice` entries whose
   data (`TeamNoticeData`) names the delivery kind and its sender: an Alert's
   author, or `team-lead` for Tasks and stops. An interrupt Alert's data also
-  has `interrupt: true`. A reader names a notice from this data, never from its
-  text.
-  Interrupt Alerts persist the recipient run ID at acceptance. A separate phase
-  asks the host `abortRun` port to stop that exact run, then checkpoints before
-  normal admission. Queue identities stay native; no input is re-queued.
-  A failed interruption appears as unproved in the notice. Retry never selects
-  a replacement run. The node supplies a cancellable wait outside its admission lock.
+  has `interrupt: true`. A confirmed interruption adds `interruptedRun` to the
+  obligation and entry data. This field identifies the aborted native run.
+  A reader names a notice from this data, never from its text.
+  New interrupt obligations and delivery inputs carry `interruptAt: 'delivery'`.
+  The interrupt phase selects `LiveDoc.run` and commits its run ID and absolute
+  settlement deadline before asking the host `abortRun` port to stop that run.
+  The settlement wait has a 10-second budget. Retry keeps the selection and deadline.
+  An idle recipient gets a plain steer. An unproved interruption gets normal
+  admission with an unproved outcome. A newer run gets no second abort.
+  Unmarked inputs keep their acceptance-time choice and model-facing wording;
+  an absent run ID remains an idle-at-send choice.
+  Task version 2 migrates version-1 inputs and checkpoints without changing them.
+  After the first open and resume, older nodes park these deliveries with
+  `task_too_old`. Restore a backup to roll back.
+  Queue identities and inbox order stay native. No input is re-queued.
+  The node supplies a cancellable wait outside its admission lock.
+  Native run-only abort does not drain an input admitted before abort settlement.
+  That input can stay queued until another admission starts the next run. Two
+  bounded expected-failure cases in `test/authority/interrupt-parity.test.ts`
+  record it.
 - `ptb.notify` reserves an automatic page before admission. A failed lead input
   pauses notification. Explicit sync or a new owner input resumes it.
 - `team_sync` reserves successive bounded pages. It never waits for consumption.

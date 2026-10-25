@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { NativeIdBijection } from './native-id-bijection.ts';
+import { INTERRUPT_DIVERGENCES, INTERRUPT_WORDING, NativeIdBijection } from './native-id-bijection.ts';
 import { runDifferential, runTargeted } from './differential.ts';
 
 test('seeded differential public authority contract', () => runDifferential(3), 120000);
@@ -64,4 +64,35 @@ test('draft comparisons preserve every notice field and interruption outcome', (
   const page = { ...draft, entry: { kind: 'team.notice', data: { source: 'team', pageId: 'page-1', epoch: 'epoch-1', delivery: 'update', sender: 'durable-team' } } };
   const changed: any = structuredClone(page); changed.entry.data.pageId = 'page-2';
   assert.throws(() => ids.compareDraft(changed, page));
+});
+
+test('interrupt divergences cover only their named fields on interrupt deliveries', () => {
+  assert.deepStrictEqual(INTERRUPT_DIVERGENCES.map(d => d.item), ['interruptAt', 'run choice and abort target', 'interruptedRun', 'settle-bound outcome', 'interrupt wording']);
+  const alert = (conversationId: number) => ({ key: 'team:1000001:alert:1000002:w0:g1', epoch: 'team:1000001', conversationId, interrupt: true, content: '{"kind":"alert","text":"Stop"}', whenBusy: 'steer', kind: 'alert', sender: 'team-lead' });
+  const p = { ...alert(10) } as any, current = { ...alert(30) } as any;
+  p.expectedRunTaskId = 900100; const { content, whenBusy, kind, sender } = p; delete p.content; delete p.whenBusy; delete p.kind; delete p.sender; Object.assign(p, { content, whenBusy, kind, sender });
+  const { content: c, whenBusy: w, kind: k, sender: s } = current; for (const key of ['content', 'whenBusy', 'kind', 'sender']) delete current[key]; Object.assign(current, { interruptAt: 'delivery', content: c, whenBusy: w, kind: k, sender: s });
+  actorMap().compareDeliveries([current], [p]);
+  for (const [field, value] of [['whenBusy', 'followUp'], ['sender', 'w0'], ['kind', 'task'], ['content', '{"kind":"alert","text":"Stop!"}'], ['epoch', 'team:1000009'], ['interruptAt', 'acceptance']] as const) {
+    assert.throws(() => actorMap().compareDeliveries([{ ...current, [field]: value }], [p]), `mutated ${field} must fail`);
+  }
+  assert.throws(() => actorMap().compareDeliveries([{ ...current, expectedRunTaskId: 900100 }], [p]), /Fields\/order/);
+  const plain = delivery(10), marked = { ...delivery(30), interruptAt: 'delivery' };
+  assert.throws(() => actorMap().compareDeliveries([marked], [plain]), /Fields\/order/);
+  assert.throws(() => actorMap().compareDeliveries([{ ...delivery(30), whenBusy: 'followUp' }], [plain]), /Value at/);
+
+  const draft = (message: string, outcome = 'interrupted', interrupt = true) => ({ type: 'input', content: JSON.stringify({ kind: 'alert', text: 'Stop', interruption: { outcome, message } }), whenBusy: 'steer', requestId: 'ptb:alert-1',
+    entry: { kind: 'team.notice', data: { source: 'team', deliveryId: 'alert-1', epoch: 'epoch-1', delivery: 'alert', sender: 'team-lead', ...(interrupt ? { interrupt: true } : {}) } } });
+  const old = draft('The captured run was interrupted.');
+  const now: any = draft(INTERRUPT_WORDING.interrupted); now.entry.data.interruptedRun = 30;
+  actorMap().compareDraft(now, old);
+  actorMap().compareDraft(draft(INTERRUPT_WORDING.ended, 'ended'), draft('The captured run already ended or changed.', 'ended'));
+  assert.throws(() => actorMap().compareDraft({ ...now, content: now.content.replace('"text":"Stop"', '"text":"Go"') }, old), /exact draft/);
+  assert.throws(() => actorMap().compareDraft({ ...now, whenBusy: 'followUp' }, old));
+  assert.throws(() => actorMap().compareDraft(draft(INTERRUPT_WORDING.ended, 'interrupted'), old), /exact draft/);
+  assert.throws(() => actorMap().compareDraft(draft('Changed.', 'failed'), draft('Interruption was not proved; this Alert uses normal delivery.', 'failed')), /exact draft/);
+  const ordinary = draft('The captured run was interrupted.', 'interrupted', false), ordinaryNow: any = draft(INTERRUPT_WORDING.interrupted, 'interrupted', false);
+  assert.throws(() => actorMap().compareDraft(ordinaryNow, ordinary), /exact draft/);
+  ordinaryNow.content = ordinary.content; ordinaryNow.entry.data.interruptedRun = 30;
+  assert.throws(() => actorMap().compareDraft(ordinaryNow, ordinary), /Fields\/order/);
 });

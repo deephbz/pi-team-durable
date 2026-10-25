@@ -39,6 +39,14 @@ Caller IDs, synthetic run coordinates, graph IDs, version tokens, keys, field
 order, and all non-ID bytes stay exact. JSON content uses token-position
 substitution for native IDs only. The same map applies to draft content.
 
+Since 0.1.0-rc.3, an interrupt Alert chooses its run at delivery, where P chose
+it at acceptance. `INTERRUPT_DIVERGENCES` in `native-id-bijection.ts` names the
+only exempt items, and they apply only when both sides mark the Alert
+`interrupt: true`: `interruptAt`, P's acceptance-time `expectedRunTaskId`,
+`interruptedRun`, the settle-bound outcome, and the exact new `interrupted` and
+`ended` wording. Each item names the test that covers it. A self-test in
+`differential.test.ts` shows that every other field stays exact.
+
 The fixtures keep the scheduler paused. They do not submit drafts, inspect
 persisted admission entries, select interruption outcomes, or execute the host
 interrupt port. Draft comparisons verify the public builders that the submit

@@ -1,4 +1,4 @@
-// Interrupt only the run captured at Alert acceptance. Never withdraw or re-admit queued submissions.
+// Interrupt only the recorded run. Never withdraw or re-admit queued submissions.
 import type { Context } from '@earendil-works/chord/context';
 import { LiveDoc,type Harness,type TaskId,type ConversationId,type DocumentReader } from '@earendil-works/pi-durable';
 import { openAuthority as open,obligation } from './store.ts';
@@ -18,10 +18,10 @@ export async function abortExpectedRun(harness:Harness,target:InterruptTarget,co
   if(!task||task.conversationId!==target.conversationId)return 'failed';
   if(task.state.status==='terminal')return task.state.outcome.status==='aborted'?'interrupted':'ended';
   if(live.run?.taskId!==target.expectedRunTaskId)return 'ended';
-  return 'abort';
+  return task.abortRequested?'wait':'abort';
  },context);
- if(check!=='abort')return check;
- await harness.abortTask(target.expectedRunTaskId!,context);
+ if(check!=='abort'&&check!=='wait')return check;
+ if(check==='abort')await harness.abortTask(target.expectedRunTaskId!,context);
  const task=await harness.waitForTask(target.expectedRunTaskId!,context);
  return task.state.outcome.status==='aborted'?'interrupted':'failed';
 }
