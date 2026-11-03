@@ -15,7 +15,7 @@ test('delivery replays after admission commit loss with one native submission',a
   await graph(f);const before=await f.state(),obligation=Object.values(before.outbox.obligations)[0],worker=before.team.current!.workers.builder;
   f.faux.setResponses([answer('Accepted')]);
   f.storage.fault=writes=>writes.some(w=>w.type==='submission'&&w.value.requestId===`ptb:${obligation.key}`);
-  f.harness.resume();expect((await f.harness.closed).reason).toBe('failed');
+  f.harness.resume();expect((await f.harness.closed).kind).toBe('failed');
   await f.reopen();
   expect((await f.harness.waitForTask(obligation.deliveryTaskId!,context)).state.outcome.status).toBe('completed');
   const submissions=await f.storage.scanSubmissions({conversationId:worker.conversationId},100,undefined,context);
@@ -46,7 +46,7 @@ test('notifier sleep and admitted page survive reopen without a duplicate submis
   await f.reopen();f.setNow(31000);
   f.faux.setResponses([answer('Observed Team update')]);
   f.storage.fault=writes=>writes.some(w=>w.type==='submission'&&w.value.requestId?.includes(':notify:'));
-  f.harness.resume();expect((await f.harness.closed).reason).toBe('failed');
+  f.harness.resume();expect((await f.harness.closed).kind).toBe('failed');
   await f.reopen();const settled=nextTask(f.harness,id,s=>s.status==='sleeping'&&s.checkpoint.ordinal===2);
   f.harness.resume();await settled;
   const submissions=await f.storage.scanSubmissions({conversationId:f.root.id},100,undefined,context);

@@ -1,7 +1,7 @@
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context';
 import { createModels } from '@earendil-works/pi-ai/models';
 import { fauxProvider } from '@earendil-works/pi-ai/providers/faux';
-import { createRegistry,Harness,MemoryStorage,type TaskId,type ConversationId,type Extension,type StorageWrite } from '@earendil-works/pi-durable';
+import { createRegistry,Harness,MemoryStorage,type TaskId,type ConversationId,type Extension,type StorageWrite,type Seq } from '@earendil-works/pi-durable';
 import { createTeamRuntime,confirmStop } from '../../src/authority/runtime.ts';
 import { abortExpectedRun,type AbortRun } from '../../src/authority/interrupt.ts';
 import { open,plain } from '../../src/authority/state.ts';
@@ -9,17 +9,17 @@ import type { CoreApi } from '../../src/authority/tools.ts';
 export { context };
 export class ReopenableMemory extends MemoryStorage {
  fault?: (writes:readonly StorageWrite[])=>boolean;
- override async commit(writes:readonly StorageWrite[],c:typeof context){
-  const seq=await super.commit(writes,c);
+ override async commit(batches:readonly (readonly StorageWrite[])[],receive:(index:number,seq:Seq)=>void,c:typeof context){
+  const writes=batches.flat(),seq=await super.commit(batches,receive,c);
   if(this.fault?.(writes)){this.fault=undefined;throw new Error('simulated loss after durable commit');}
   return seq;
  }
  override async close(){}
 }
 export function nextTask(harness:Harness,id:TaskId,predicate:(state:any)=>boolean):Promise<void>{
- return new Promise(resolve=>{const off=harness.subscribeCommits(publication=>{
-  if(publication.changes.some(c=>c.type==='task'&&c.value.id===id&&predicate(c.value.state))){off();resolve();}
- });});
+ return new Promise(resolve=>{const observation=harness.observeCommits({advance:publication=>{
+  if(publication.changes.some(c=>c.type==='task'&&c.value.id===id&&predicate(c.value.state))){observation.detach();resolve();}
+ },end:()=>{}});});
 }
 export async function runtimeFixture(extra:Extension[]=[],wrapAbortRun:(port:AbortRun)=>AbortRun=port=>port,clock?:{now:()=>number;setTimer:(callback:()=>void,delayMs:number)=>()=>void}){
  const models=createModels(),faux=fauxProvider({provider:'ptb-faux',api:'ptb-faux',models:[{id:'test'}],tokensPerSecond:0});models.setProvider(faux.provider);

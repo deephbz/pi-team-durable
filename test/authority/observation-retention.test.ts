@@ -100,7 +100,7 @@ test('a settled notifier page stays replayable through submit and settle, then l
   const notifier=(await f.state()).team.current!.notifierId!,sleeping=nextTask(f.harness,notifier,s=>s.status==='sleeping');
   f.harness.resume();await sleeping;f.setNow(31000);f.faux.setResponses([answer('Observed')]);
   let off=()=>{};
-  const done=new Promise<void>(resolve=>{off=f.harness.subscribeCommits(publication=>{if(publication.changes.some(c=>c.type==='submission'&&c.value.requestId?.includes(':notify:')&&c.value.status==='done')){off();resolve();}});});
+  const done=new Promise<void>(resolve=>{const observation=f.harness.observeCommits({advance:publication=>{if(publication.changes.some(c=>c.type==='submission'&&c.value.requestId?.includes(':notify:')&&c.value.status==='done')){observation.detach();resolve();}},end:()=>{}});off=()=>observation.detach();});
   f.harness.resume();await done;
   await observe(f.harness,context);
   let snapshot=await f.harness.commit(observations,context),p=Object.values(snapshot.pages)[0];

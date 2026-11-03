@@ -57,18 +57,18 @@ async function fixture(factory: typeof RuntimeFactory) {
   const root = await harness.root(context, { agent: { model: { provider: 'oracle-faux', modelId: 'test' }, extensions: [runtime.mechanics, runtime.lead, runtime.observation] } });
   // Persist a synthetic lead run so sync exercises real snapshot/update reservations while
   // the scheduler stays paused. This is pi-durable carrier setup, not Team state access.
-  await root.commit(async tx => { (await tx.doc(LiveDoc, root.id)).run = { taskId: 900000 as TaskId, inputs: [900001 as SubmissionId] }; }, context);
+  await root.commit(async tx => { (await tx.doc(LiveDoc, root.id)).run = { taskId: 900000 as TaskId, inputs: [900001 as SubmissionId], turns: 0 }; }, context);
   const bindings = new Map<string, ConversationId>();
   let newest = root.id;
   const deliveries: unknown[] = [], seen = new Set<number>();
-  const off = harness.subscribeCommits(publication => {
+  const observation = harness.observeCommits({ advance: publication => {
     for (const change of publication.changes) {
       if (change.type === 'conversation') newest = change.value.id;
       if (change.type === 'task' && change.value.kind === 'ptb.deliver' && !seen.has(change.value.id)) {
         seen.add(change.value.id); deliveries.push(copy(change.value.input));
       }
     }
-  });
+  }, end: () => {} });
   async function execute(command: Command): Promise<any> {
     const role: Role = command.actor ? 'worker' : 'lead';
     const conversationId = command.actor ? bindings.get(command.actor)! : root.id;
@@ -80,7 +80,7 @@ async function fixture(factory: typeof RuntimeFactory) {
         await root.commit(async tx => {
           const live = await tx.doc(LiveDoc, target);
           if (command.carrier!.taskId === undefined) delete live.run;
-          else live.run = { taskId: command.carrier!.taskId as TaskId, inputs: [900001 as SubmissionId] };
+          else live.run = { taskId: command.carrier!.taskId as TaskId, inputs: [900001 as SubmissionId], turns: 0 };
         }, context);
       }
       const before = newest;
@@ -91,7 +91,7 @@ async function fixture(factory: typeof RuntimeFactory) {
   }
   return { execute, deliveries, actorIds: () => new Map<string, number>([['team-lead', root.id], ...bindings]), async close() {
     assert.equal((await harness.inspect(context)).scheduling, 'paused'); assert.equal(faux.state.callCount, 0);
-    off(); await harness.close(context);
+    observation.detach(); await harness.close(context);
   } };
 }
 

@@ -17,7 +17,7 @@ test('two sync calls reserve successive pages; persisted response plus run succe
    return answer('Final persisted response');
   }]);
   const submission=await f.root.submit({type:'input',content:'Read Team twice.'},context);
-  await submission.wait(context).catch(()=>undefined);expect((await f.harness.closed).reason).toBe('failed');
+  await submission.wait(context).catch(()=>undefined);expect((await f.harness.closed).kind).toBe('failed');
   await f.reopen();
   expect((await (await f.harness.submission(submission.id,context))!.status(context)).status).toBe('done');
   const before=await f.root.commit(async tx=>plain(await observations(tx)),context);

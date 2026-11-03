@@ -10,7 +10,7 @@ import { TeamDoc,GraphDoc,JournalDoc,OutboxDoc,ReceiptDoc } from '../../src/auth
 import { ObservationDoc } from '../../src/authority/observation-store.ts';
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context';
 import { createModels } from '@earendil-works/pi-ai/models';
-import { createRegistry,Harness,MemoryStorage,type StorageWrite,type TaskId } from '@earendil-works/pi-durable';
+import { createRegistry,Harness,MemoryStorage,type Seq,type StorageWrite,type TaskId } from '@earendil-works/pi-durable';
 import { createAuthorityTools,type CoreApi } from '../../src/authority/tools.ts';
 import { createAuthorityTools as legacyTools } from '../oracle/authority/tools.ts';
 import { open as legacyOpen } from '../oracle/authority/state.ts';
@@ -24,10 +24,10 @@ class Storage extends MemoryStorage {
  fault?:{after:boolean;matches:(writes:readonly StorageWrite[])=>boolean};
  writes:readonly StorageWrite[]=[];
  override async close(){}
- override async commit(writes:readonly StorageWrite[],c:typeof context){
-  this.writes=writes;const fault=this.fault?.matches(writes)?this.fault:undefined;if(fault)this.fault=undefined;
+ override async commit(batches:readonly (readonly StorageWrite[])[],receive:(index:number,seq:Seq)=>void,c:typeof context){
+  const writes=batches.flat();this.writes=writes;const fault=this.fault?.matches(writes)?this.fault:undefined;if(fault)this.fault=undefined;
   if(fault&&!fault.after)throw new Error('before native commit');
-  const seq=await super.commit(writes,c);if(fault)throw new Error('after native commit');return seq;
+  const seq=await super.commit(batches,receive,c);if(fault)throw new Error('after native commit');return seq;
  }
 }
 async function fixture(legacy=false){
@@ -127,8 +127,8 @@ test('accepted prototype-like Task and Worker names retain indexed state',async(
 
 test('a context-only transition writes one Task base and the head omits topology and projections',async()=>{
  const f=await fixture(),g=await f.call('task_graph_apply',{operation_id:'g',tasks:[def('a'),def('b',['a']),def('c',['b'])]});
- const changed:any[]=[];const off=f.h.subscribeCommits(p=>{changed.push(...p.changes.filter(c=>c.type==='document'));});
- await f.call('task_update',{task_id:'a',operation_id:'context',expected_version:g.tasks_by_key.a.version,current_context:'Current context'},'worker',f.worker);off();
+ const changed:any[]=[];const observation=f.h.observeCommits({advance:p=>{changed.push(...p.changes.filter(c=>c.type==='document'));},end:()=>{}});
+ await f.call('task_update',{task_id:'a',operation_id:'context',expected_version:g.tasks_by_key.a.version,current_context:'Current context'},'worker',f.worker);observation.detach();
  expect(changed.filter(c=>c.record.kind==='ptb.task')).toHaveLength(1);
  const headChange=changed.find(c=>c.record.kind==='ptb.head');const head=JSON.parse(headChange.value.value);
  expect(head.taskCount).toBe(3);expect(head.graph.topology).toBeUndefined();expect(head.graph.projections).toBeUndefined();
@@ -141,7 +141,7 @@ for(const migrated of [true,false])test(`rc.7 access fails before writes on a ${
  let writes:StorageWrite[]=[],calls=1000000;
  const storage=async()=>{
   const db=await openNodeSqliteStorage(file),commit=db.commit.bind(db);
-  db.commit=async(w,c)=>{writes.push(...w);return commit(w,c);};return db;
+  db.commit=async(b,r,c)=>{writes.push(...b.flat());return commit(b,r,c);};return db;
  };
  let h=await Harness.open(await storage(),options,context),root=await h.root(context);
  try{

@@ -27,8 +27,8 @@ const registry=createRegistry();for(const extension of rt.extensions)registry.in
 if(mode==='seed'||mode==='old-reader')registry.install({...rt.mechanics,tasks:[rt.tasks.WorkerAnchor,old,rt.tasks.Notify]});
 const db=await openNodeSqliteStorage(join(dir,'store.sqlite')),commit=db.commit.bind(db);
 let cut=false;
-db.commit=async(writes:readonly StorageWrite[],c)=>{
- const seq=await commit(writes,c);
+db.commit=async(batches,receive,c)=>{
+ const writes=batches.flat(),seq=await commit(batches,receive,c);
  const row=writes.find(w=>w.type==='task'&&w.value.kind==='ptb.deliver'&&w.value.version===(mode==='seed'?1:2));
  if(!cut&&row?.type==='task'&&(['seed','new-seed','migrate'].includes(mode))){
   cut=true;

@@ -31,8 +31,8 @@ test('P SQLite migration preserves every Alert and obligation field and resumes 
  const start=async(legacy:boolean)=>{
   const rt=runtime(legacy),registry=createRegistry();for(const extension of rt.extensions)registry.install(extension);
   const db=await openNodeSqliteStorage(file),commit=db.commit.bind(db);
-  db.commit=async(writes:readonly StorageWrite[],c)=>{
-   const seq=await commit(writes,c);
+  db.commit=async(batches,receive,c)=>{
+   const writes=batches.flat(),seq=await commit(batches,receive,c);
    if(fault&&writes.some(w=>w.type==='task'&&w.value.kind==='ptb.deliver'&&'checkpoint' in w.value.state&&typeof w.value.state.checkpoint==='object'&&w.value.state.checkpoint!==null&&!Array.isArray(w.value.state.checkpoint)&&w.value.state.checkpoint.phase==='interrupt')){fault=false;hit=true;throw new Error('Synthetic loss after P interrupt intent');}
    return seq;
   };

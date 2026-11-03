@@ -13,7 +13,7 @@ notices.
   builds Worker creation and stop settlement from them. Today the host is the AmPi
   node.
 - **Exact peers.** The peer dependencies pin `@earendil-works/pi-durable`,
-  `@earendil-works/pi-ai` and `@earendil-works/chord` to 1.4.0. Other versions give
+  `@earendil-works/pi-ai` and `@earendil-works/chord` to 1.5.0. Other versions give
   a peer conflict.
 - **First version without provenance.** The first version was published by hand.
   Later versions publish from CI with npm provenance.
